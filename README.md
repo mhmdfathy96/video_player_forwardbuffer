@@ -1,0 +1,69 @@
+# video_player_forwardbuffer
+
+A fork of Flutter's official [`video_player`](https://pub.dev/packages/video_player)
+federation that adds a **Dart-configurable forward-buffer cap**.
+
+Upstream exposes no way to limit how far ahead the player buffers from the
+network, and defaults to aggressive read-ahead — ExoPlayer ~50s, and AVPlayer
+buffers most of the file on iOS. That wastes bandwidth whenever a user abandons a
+video or seeks away. This has been requested for years without an implementation:
+[flutter#40931](https://github.com/flutter/flutter/issues/40931),
+[#141511](https://github.com/flutter/flutter/issues/141511),
+[#163918](https://github.com/flutter/flutter/issues/163918).
+
+## What it adds
+
+```dart
+VideoPlayerController.networkUrl(
+  uri,
+  videoPlayerOptions: VideoPlayerOptions(
+    // null (default) = unchanged upstream behavior (platform automatic).
+    // A value caps network read-ahead, e.g. 10s.
+    forwardBufferDuration: const Duration(seconds: 10),
+  ),
+);
+```
+
+- **Android** → ExoPlayer `DefaultLoadControl` with clamped playback thresholds.
+- **iOS/macOS** → `AVPlayerItem.preferredForwardBufferDuration`.
+
+## Usage (git dependency override)
+
+Add to your app's `pubspec.yaml`:
+
+```yaml
+dependency_overrides:
+  video_player:
+    git:
+      url: https://github.com/mhmdfathy96/video_player_forwardbuffer.git
+      path: packages/video_player
+      ref: main
+  video_player_platform_interface:
+    git:
+      url: https://github.com/mhmdfathy96/video_player_forwardbuffer.git
+      path: packages/video_player_platform_interface
+      ref: main
+  video_player_android:
+    git:
+      url: https://github.com/mhmdfathy96/video_player_forwardbuffer.git
+      path: packages/video_player_android
+      ref: main
+  video_player_avfoundation:
+    git:
+      url: https://github.com/mhmdfathy96/video_player_forwardbuffer.git
+      path: packages/video_player_avfoundation
+      ref: main
+```
+
+Keep `video_player: ^2.11.1` in your normal `dependencies`; the overrides swap the
+implementations.
+
+## Base versions & changes
+
+See [PATCH.md](PATCH.md) for the upstream base versions and the exact per-package
+diff. The goal is to upstream this to `flutter/packages`; if it lands there, drop
+these overrides and return to the pub.dev versions.
+
+## License
+
+BSD-3-Clause, inherited from the upstream Flutter packages. See [LICENSE](LICENSE).
